@@ -1,0 +1,80 @@
+name: Guardian de aportes
+
+# Revisa cada Pull Request de aportes antes de que Claude y Rael lo lean.
+# No puede escribir en el repo: solo lee y marca el Pull Request en verde o en rojo.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  guardian:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Revisar rama, carpeta, tipos de archivo, claves y reglas
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -u
+          fail=0
+          equipo="chatgpt perplexity musa meta"
+
+          # 1. Nombre de la rama: aporte/<carpeta>/<tema>
+          if [[ ! "$HEAD_REF" =~ ^aporte/([a-z]+)/[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::La rama debe llamarse aporte/<carpeta>/<tema> (carpetas: $equipo)."
+            exit 1
+          fi
+          carpeta="${BASH_REMATCH[1]}"
+          if [[ " $equipo " != *" $carpeta "* ]]; then
+            echo "::error::'$carpeta' no es una carpeta del equipo ($equipo)."
+            exit 1
+          fi
+
+          # 2. Solo archivos dentro de aportes/<carpeta>/ y solo tipos permitidos
+          mapfile -t archivos < <(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if [[ ${#archivos[@]} -eq 0 ]]; then
+            echo "::error::El Pull Request no cambia ningún archivo."
+            fail=1
+          fi
+          for f in "${archivos[@]}"; do
+            if [[ "$f" != aportes/"$carpeta"/* ]]; then
+              echo "::error file=$f::Fuera de aportes/$carpeta/. Cada miembro escribe solo en su carpeta."
+              fail=1
+            fi
+            case "${f,,}" in
+              *.md|*.txt|*.csv|*.json|*.png|*.jpg|*.jpeg) ;;
+              *) echo "::error file=$f::Tipo de archivo no permitido. Solo .md, .txt, .csv, .json, .png o .jpg."; fail=1 ;;
+            esac
+          done
+
+          # 3. Líneas añadidas: claves (rechaza) y reglas de riesgo (avisa)
+          anadido="$(git diff -U0 "$BASE_SHA" "$HEAD_SHA" | grep '^+' | grep -v '^+++' || true)"
+
+          claves='gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|xox[abprs]-[A-Za-z0-9-]{10,}|"(key|secret|password|token|api_key|apikey|jwt_secret_key)"[[:space:]]*:[[:space:]]*"[^"]{8,}"'
+          if printf '%s\n' "$anadido" | grep -Eiq -- "$claves"; then
+            echo "::error::Hay algo con forma de clave, token o contraseña. No se muestra aquí a propósito. Quítalo del aporte: lo que llega a git queda en el historial."
+            fail=1
+          fi
+
+          riesgo='apalancam|leverage|futuros|futures|perpetu|margin trading|trading con margen|"trading_mode"[[:space:]]*:[[:space:]]*"(futures|margin)"|"dry_run"[[:space:]]*:[[:space:]]*false'
+          if printf '%s\n' "$anadido" | grep -Eiq -- "$riesgo"; then
+            echo "::warning::El aporte menciona apalancamiento, futuros, margen o dry_run false. Puede ser para descartarlo, pero la revisión debe mirarlo con lupa."
+          fi
+
+          {
+            echo "### Guardián de aportes"
+            echo "- Rama: \`$HEAD_REF\` → carpeta \`aportes/$carpeta/\`"
+            echo "- Archivos: ${#archivos[@]}"
+            if [[ $fail -eq 0 ]]; then echo "- Resultado: **pasa**"; else echo "- Resultado: **no pasa** (ver los errores)"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit $fail
