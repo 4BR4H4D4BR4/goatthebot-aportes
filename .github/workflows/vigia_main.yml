@@ -1,0 +1,76 @@
+name: Vigia de main
+
+# Avisa si main recibe cambios en aportes/ o en .github/ sin pasar por un Pull
+# Request, o si alguien reescribe su historia. No bloquea nada (proteger main en
+# un repo privado exige GitHub Pro): marca el push en rojo y GitHub manda un
+# correo. Todo se deshace con git revert.
+#
+# Los merges de Pull Request tienen que hacerse con merge commit (el boton por
+# defecto), no con squash ni rebase: este vigia solo mira la linea principal de
+# main y trata cualquier commit sin merge como subido directo.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  vigia:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Revisar lo que llego a main
+        env:
+          ANTES: ${{ github.event.before }}
+          DESPUES: ${{ github.sha }}
+          FORZADO: ${{ github.event.forced }}
+        run: |
+          set -u
+          fail=0
+
+          if [[ "$FORZADO" == "true" ]]; then
+            echo "::error::Alguien reescribio la historia de main (push forzado). Revisalo de inmediato."
+            fail=1
+          fi
+
+          if [[ -z "$ANTES" || "$ANTES" =~ ^0+$ ]] || ! git cat-file -e "$ANTES^{commit}" 2>/dev/null; then
+            echo "::warning::No hay un commit anterior con el que comparar; solo se revisa el ultimo."
+            rango="$DESPUES^!"
+          else
+            rango="$ANTES..$DESPUES"
+          fi
+
+          # Commits de la linea principal que no son merge: los que se subieron
+          # directo a main, sin Pull Request.
+          mapfile -t directos < <(git rev-list --first-parent --no-merges $rango)
+          for c in "${directos[@]}"; do
+            corto="${c:0:7}"
+            while read -r f; do
+              [[ -z "$f" ]] && continue
+              # El commit que da de alta este vigia no es una alarma; cambiarlo despues, si.
+              if [[ "$f" == ".github/workflows/vigia_main.yml" ]] && ! git cat-file -e "$c^:$f" 2>/dev/null; then
+                echo "::notice file=$f::Alta del vigia de main."
+                continue
+              fi
+              case "$f" in
+                aportes/*|.github/*)
+                  echo "::error file=$f::El commit $corto llego a main sin Pull Request y toca $f. Si no lo hizo Rael, deshazlo con git revert."
+                  fail=1 ;;
+                *)
+                  echo "::notice file=$f::El commit $corto llego a main sin Pull Request (archivo de la raiz: permitido para Rael y Claude)." ;;
+              esac
+            done < <(git diff-tree --no-commit-id --name-only -r "$c")
+          done
+
+          {
+            echo "### Vigia de main"
+            echo "- Commits subidos directo a main en este push: ${#directos[@]}"
+            if [[ $fail -eq 0 ]]; then echo "- Resultado: **sin alertas**"; else echo "- Resultado: **ALERTA** (ver los errores)"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit $fail

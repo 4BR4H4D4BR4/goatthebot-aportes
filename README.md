@@ -47,3 +47,12 @@ En cada Pull Request, el guardián (`.github/workflows/guardian.yml`) comprueba:
 | Solo hay archivos de texto o imagen (`.md`, `.txt`, `.csv`, `.json`, `.png`, `.jpg`) | Rechaza |
 | No aparece nada con forma de clave, token o contraseña | Rechaza |
 | Menciona apalancamiento, futuros, margen, perpetuos o `dry_run: false` | Avisa, para que la revisión lo mire con lupa |
+
+## Vigía de `main`
+
+`main` no está protegida: en un repo privado eso exige GitHub Pro, y como todos los miembros trabajan desde la misma cuenta, la protección no distinguiría quién cambia qué. En su lugar, el vigía (`.github/workflows/vigia_main.yml`) revisa cada cambio que llega a `main` y lo marca en rojo, con un correo a Rael, si:
+
+- un commit toca `aportes/` o `.github/` sin pasar por un Pull Request;
+- alguien reescribe la historia de `main` con un push forzado.
+
+Los archivos de la raíz (convocatorias, memorándums) solo los suben Rael o Claude, directo a `main`. Los merges de Pull Request se hacen siempre con *merge commit*, el botón por defecto, nunca con *squash* ni *rebase*: así el commit revisado queda en la historia y el vigía no da falsas alarmas.
