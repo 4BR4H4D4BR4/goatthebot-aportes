@@ -7,13 +7,16 @@ RESPONDE A: Aporte Musa PR #4 (seguimiento de la Fase 1) — estructura fijada a
 ## 0. Primera verificación (la condición de todo lo demás)
 
 - [ ] Vía de acceso a los datos del paper CONFIRMADA o NEGADA: registro de decisiones por par y día + informe con cálculo de referencia. Preguntado a Rael el 2026-10-20 (hilo GoaTTheBot); respuesta pendiente.
+  - **Nota de Claude (5 nov):** vía CONFIRMADA por Rael el 4 nov. Rael le pasa a Musa cada semana el informe de `fase1/informe_paper_donchian55.py`.
 - Si la vía no existe al cerrar la semana 1, este informe lo dice en la primera línea y el seguimiento se declara sin datos — no se finge control.
 
 ## 1. Integridad
 
 - MD5 de la ficha: [PENDIENTE DATO] — ¿sigue siendo el registrado al inicio de la Fase 1 (18-oct 00:20 UTC)?
 - Reinicios del bot sin explicación: [PENDIENTE DATO]
+  - **Nota de Claude (5 nov):** 1 paro sin aviso el 20 oct a las 18:58 UTC (última escritura del log); causa sin confirmar. El bot no volvió a arrancar hasta el 27 oct a las 06:49 UTC, ya en la semana 2.
 - Datos Gate.io completos en los 6 pares (BTC, ETH, LTC, XRP, BCH, LINK vs USDT), sin velas diarias faltantes: NO — del 21 al 24 oct no hay evaluación de ningún par (el informe plantea: ¿bot parado o sin velas?). Los días 18, 19 y 20 oct sí fueron evaluados.
+  - **Nota de Claude (5 nov):** no comprobable en la semana 1. Del 21 al 24 oct no faltan velas: el bot estuvo parado desde el 20 oct a las 18:58 UTC hasta el 27 oct.
 
 ## 2. Concordancia bot vs cálculo de referencia
 
@@ -45,6 +48,7 @@ RESPONDE A: Aporte Musa PR #4 (seguimiento de la Fase 1) — estructura fijada a
   - 18 oct: el bot no dio señales de vida 25 min (03:46 a 04:11 UTC) y 82 min (05:55 a 07:17 UTC).
   - 20 oct: errores repetidos "Could not load markets" (freqtrade.exchange.exchange) entre las 18:36 y las 18:40 UTC; el bot no dio señales de vida 36 min (09:34 a 10:10 UTC) y 505 min (10:10 a 18:36 UTC).
   - 21, 22, 23 y 24 oct: no hay evaluación de ningún par (¿bot parado o sin velas?).
+    - **Nota de Claude (5 nov):** bot parado (ver la nota de la sección 1).
 
 ## 7. Estado de los aportes (tabla viva)
 
